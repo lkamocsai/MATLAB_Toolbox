@@ -1,6 +1,6 @@
 function [mu,A,B,SIGMA,U] = tsEstimateVARX(y,x,p,s,paramRestr)
 % ------------------------------------------------------------------------------------
-% Function to estimate VAR(p) model using Feasible Generalized Least Square
+% Function to estimate VARX(p,s) model using Feasible Generalized Least Square
 % ------------------------------------------------------------------------------------
 % INPUT: y: K x 1 random variable vector, y(t) = [y(1,t)...y(K,t)]' k = 1...K, t = 1...T
 %        x: K x 1 random variable vector, x(t) = [x(1,t)...x(M,t)]' m = 1...M, t = 1...T
