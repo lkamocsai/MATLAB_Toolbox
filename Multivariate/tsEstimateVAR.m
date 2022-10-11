@@ -4,8 +4,7 @@ function [mu,A,SIGMA,U] = tsEstimateVAR(y,p,paramRestr)
 % ------------------------------------------------------------------------------------
 % INPUT: y: K x 1 random variable vector, y(t) = [y(1,t)...y(K,t)]' k = 1...K, t = 1...T
 %        p: number of lags
-%        VARmode: enter 'VAR1' if one want to use VAR(1) representation of
-%        VAR(p) model (default value: 'VARp')
+%        paramRestr: parameter restrictions
 % ------------------------------------------------------------------------------------
 % OUTPUT: mu: mean vector
 %         A: VAR(1) companion matrix (Kp x Kp)
@@ -36,9 +35,9 @@ end
 
 %-------------------------(2) Prepare dataset for estimation -------------------------
 
-lags = tsMultMlag(y,p); % Y(t) = [y(t) ... y(t-p+1)]
+tmpYlags = tsMultMlag(y,p); % Y(t) = [y(t) ... y(t-p+1)]
 Y = y(p + 1:t,:)'; % set start
-Ylags = lags(p + 1:t,:)';
+Ylags = tmpYlags(p + 1:t,:)';
 Z = [ones(1,t-p); Ylags]; % Z(t) = [1 y(t) ... y(t-p+1)] (Ref.2 p.70)
 
 %------------------------------(1) FGLS Estimation ------------------------------------
@@ -49,19 +48,19 @@ if ~isempty(paramRestr)
     R(:,paramRestr) = [];
 end
 
-% Estimate Coefficients
-gamma = inv(R'*kron(Z*Z',eye(K))*R)*R'*(kron(Z,eye(K)))*vec(Y);
-alpha = R*gamma; 
-A = reshape(alpha,K,(K*p + 1)); 
+% First stage estimate using LS
+AA = (Y*Z')/(Z*Z');
+U = Y-AA*Z;
+SIGMA = U*U'/(t-K*p-1);
 
-% Estimate consistent Covariance matrix
-u = vec(Y) - kron(Z',eye(K))*R*gamma;
-U = reshape(u,K,size(Y,2));
-SIGMA = U*U'/(t); % 
+% Second stage estimate the GLS
+gamma = inv(R'*kron(Z*Z',inv(SIGMA))*R)*R'*(kron(Z,inv(SIGMA)))*vec(Y);
+alpha = R*gamma; 
+tmpA = reshape(alpha,K,(K*p + 1));
 
 % VAR(1) representation
-mu = [A(1:K,1); zeros(K,1)];
-A = A(:,2:(K*p) + 1);
+mu = [tmpA(1:K,1); zeros(K,1)];
+A = tmpA(:,2:(K*p) + 1);
 A = [A(1:K,:);eye(K*(p-1)) zeros(K*(p-1),K)]; % Kp x Kp dimensional companion matrix (Ref.2 p.15)
 
 end
