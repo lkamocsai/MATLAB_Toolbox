@@ -31,7 +31,7 @@ arguments
     y {mustBeNonempty,mustBeNumeric}
     x {mustBeNonempty,mustBeNumeric}
     p {mustBeNonempty,mustBeNonzero,mustBeNumeric}
-    s {mustBeNonempty,mustBeNonzero,mustBeNumeric}
+    s {mustBeNonempty,mustBeNonzero,mustBeNumeric,mustBeLessThanOrEqual(s,p) }
     paramRestr {mustBeNumeric} = []
 end
 
