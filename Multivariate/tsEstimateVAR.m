@@ -1,4 +1,4 @@
-function [mu,A,SIGMA,U] = tsEstimateVAR(y,p,paramRestr)
+﻿function [mu,A,SIGMA,U,Z] = tsEstimateVAR(y,p,paramRestr)
 % ------------------------------------------------------------------------------------
 % Function to estimate VAR(p) model using Feasible Generalized Least Square
 % ------------------------------------------------------------------------------------
@@ -19,10 +19,13 @@ function [mu,A,SIGMA,U] = tsEstimateVAR(y,p,paramRestr)
 % ------------------------------------------------------------------------------------
 %
 % Copyright: Laszlo Kamocsai
+% https://github.com/lkamocsai
 % lkamocsai@student.elte.hu
 % Version: 1.0    Date: 11/10/2022
 %
-%-----------------------------(1) check inputs, set env ------------------------------
+% ------------------------------------------------------------------------------------
+%
+% -----------------------------(1) check inputs, set env -----------------------------
 
 arguments
     y {mustBeNonempty,mustBeNumeric}
@@ -30,17 +33,17 @@ arguments
     paramRestr {mustBeNumeric} = []
 end
 
-% get dimensions
+% Get dimensions
 [t,K] = size(y);
 
-%-------------------------(2) Prepare dataset for estimation -------------------------
+% -----------------------------(2) Prepare dataset for estimation --------------------
 
 tmpYlags = tsMultMlag(y,p); % Y(t) = [y(t) ... y(t-p+1)]
 Y = y(p + 1:t,:)'; % set start
 Ylags = tmpYlags(p + 1:t,:)';
 Z = [ones(1,t-p); Ylags]; % Z(t) = [1 y(t) ... y(t-p+1)] (Ref.2 p.70)
 
-%------------------------------(1) FGLS Estimation ------------------------------------
+% -----------------------------(3) FGLS Estimation -----------------------------------
 
 % Set Coeffs restrictions
 R = eye(K*(1 + p*K),K*(1 + p*K)); 
@@ -54,13 +57,14 @@ U = Y-AA*Z;
 SIGMA = U*U'/(t-K*p-1);
 
 % Second stage estimate the GLS
-gamma = inv(R'*kron(Z*Z',inv(SIGMA))*R)*R'*(kron(Z,inv(SIGMA)))*vec(Y);
+gamma = inv(R'*kron(Z*Z',inv(SIGMA))*R) * R' * (kron(Z,inv(SIGMA))) * vec(Y);
 alpha = R*gamma; 
 tmpA = reshape(alpha,K,(K*p + 1));
 
-% VAR(1) representation
+% -----------------------------(4) VAR(1) representation -----------------------------
+
 mu = [tmpA(1:K,1); zeros(K,1)];
 A = tmpA(:,2:(K*p) + 1);
-A = [A(1:K,:);eye(K*(p-1)) zeros(K*(p-1),K)]; % Kp x Kp dimensional companion matrix (Ref.2 p.15)
+A = [A(1:K,:);eye(K*(p-1)) zeros(K*(p-1),K)]; % companion matrix (Ref.2 p.15)
 
 end

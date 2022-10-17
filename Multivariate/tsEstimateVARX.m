@@ -1,16 +1,16 @@
-function [mu,A,B,SIGMA,U] = tsEstimateVARX(y,x,p,s,paramRestr)
+﻿function [mu,A,B,SIGMA,U,Z] = tsEstimateVARX(y,x,p,s,paramRestr)
 % ------------------------------------------------------------------------------------
 % Function to estimate VARX(p,s) model using Feasible Generalized Least Square
 % ------------------------------------------------------------------------------------
-% INPUT: y: K x 1 random variable vector, y(t) = [y(1,t)...y(K,t)]' k = 1...K, t = 1...T
-%        x: K x 1 random variable vector, x(t) = [x(1,t)...x(M,t)]' m = 1...M, t = 1...T
+% INPUT: y: K x 1 random (endogenous) variable vector, y(t) = [y(1,t)...y(K,t)]' k = 1...K, t = 1...T
+%        x: K x 1 random (exogenous) variable vector, x(t) = [x(1,t)...x(M,t)]' m = 1...M, t = 1...T
 %        p: number of lags (modelled variables)
 %        s: number of lags (unmodelled variables)
 %        paramRestr: parameter restrictions
 % ------------------------------------------------------------------------------------
 % OUTPUT: mu: mean vector
 %         A: VAR(1) companion matrix (Kp + Ms) x (Kp + Ms)  
-%         B: unmodelled variables matrix (Kp + Ms) x M
+%         B: unmodelled variables coefficient matrix (Kp + Ms) x M
 %         SIGMA: Covariance matrix (K x K)
 %         U: residuals (K x T)
 % ------------------------------------------------------------------------------------
@@ -22,10 +22,13 @@ function [mu,A,B,SIGMA,U] = tsEstimateVARX(y,x,p,s,paramRestr)
 % ------------------------------------------------------------------------------------
 %
 % Copyright: Laszlo Kamocsai
+% https://github.com/lkamocsai
 % lkamocsai@student.elte.hu
 % Version: 1.0    Date: 11/10/2022
 %
-%-----------------------------(1) check inputs, set env ------------------------------
+% ------------------------------------------------------------------------------------
+%
+% -----------------------------(1) check inputs, set env -----------------------------
 
 arguments
     y {mustBeNonempty,mustBeNumeric}
@@ -35,12 +38,11 @@ arguments
     paramRestr {mustBeNumeric} = []
 end
 
-% get dimensions
+% Get dimensions
 [t,K] = size(y);
 [~,M] = size(x);
 
-
-%-------------------------(2) Prepare dataset for estimation -------------------------
+% -----------------------------(2) Prepare dataset for estimation --------------------
 
 tmpYlags = tsMultMlag(y,p); % Y(t) = [y(t) ... y(t-p+1)]
 Y = y(p + 1:t,:)'; % set start
@@ -52,7 +54,7 @@ Xlags = tmpXlags(p + 1:t,:)';
 
 Z = [ones(1,t-p); Ylags; Xlags; X]; % Z(t) = [1 y(t) ... y(t-p+1)] (Ref.2 p.70)
 
-%------------------------------(1) FGLS Estimation ------------------------------------
+% -----------------------------(3) FGLS Estimation -----------------------------------
 
 % Set Coeffs restrictions
 R = eye(K*(1 + p*K + (s + 1)*M),K*(1 + p*K + (s + 1)*M));
@@ -66,11 +68,12 @@ U = Y-AA*Z;
 SIGMA = U*U'/(t-K*p-1);
 
 % Second stage estimate the GLS
-gamma = inv(R'*kron(Z*Z',inv(SIGMA))*R)*R'*(kron(Z,inv(SIGMA)))*vec(Y);
+gamma = inv(R'*kron(Z*Z',inv(SIGMA))*R) * R' *(kron(Z,inv(SIGMA))) * vec(Y);
 alpha = R*gamma; 
 tmpA = reshape(alpha,K,(K*p + M*(s + 1) + 1));
 
-% VAR(1) representation
+% -----------------------------(4) VAR(1) representation -----------------------------
+
 mu = tmpA(:,1);
 B0 = tmpA(:,end-M+1:end);
 tmpAbig = [tmpA(:,2:K*p + M*s + 1); eye(K*(p-1)) zeros(K*(p-1),K)  zeros(K*(p-1),M*s)];
