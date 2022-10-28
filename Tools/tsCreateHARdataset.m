@@ -13,6 +13,7 @@ function [HARRVdataset, RV_d, RV_w, RV_m] = tsCreateHARdataset(RVdata)
 %-------------------------------------------------------------------------------
 %
 % Copyright: Laszlo Kamocsai
+% https://github.com/lkamocsai
 % lkamocsai@student.elte.hu
 % Version: 1.0    Date: 11/10/2022
 %

@@ -9,6 +9,7 @@ function tsLagMatOut = tsMultMlag(ts,p)
 %-------------------------------------------------------------------------------
 %
 % Copyright: Laszlo Kamocsai
+% https://github.com/lkamocsai
 % lkamocsai@student.elte.hu
 % Version: 1.0    Date: 11/10/2022
 %
