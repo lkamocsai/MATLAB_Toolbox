@@ -1,4 +1,4 @@
-﻿function [mu,A,SIGMA,U,Z] = tsEstimateVAR(y,p,paramRestr)
+function [mu,A,SIGMA,U,Z,tvals,pvals] = tsEstimateVAR(y,p,paramRestr)
 % ------------------------------------------------------------------------------------
 % Function to estimate VAR(p) model using Feasible Generalized Least Square
 % ------------------------------------------------------------------------------------
@@ -21,7 +21,7 @@
 % Copyright: Laszlo Kamocsai
 % https://github.com/lkamocsai
 % lkamocsai@student.elte.hu
-% Version: 1.0    Date: 11/10/2022
+% Version: 1.1    Date: 28/10/2022
 %
 % ------------------------------------------------------------------------------------
 %
@@ -33,15 +33,15 @@ arguments
     paramRestr {mustBeNumeric} = []
 end
 
-% Get dimensions
-[t,K] = size(y);
+% get dimensions
+[T,K] = size(y);
 
 % -----------------------------(2) Prepare dataset for estimation --------------------
 
 tmpYlags = tsMultMlag(y,p); % Y(t) = [y(t) ... y(t-p+1)]
-Y = y(p + 1:t,:)'; % set start
-Ylags = tmpYlags(p + 1:t,:)';
-Z = [ones(1,t-p); Ylags]; % Z(t) = [1 y(t) ... y(t-p+1)] (Ref.2 p.70)
+Y = y(p + 1:T,:)'; % set start
+Ylags = tmpYlags(p + 1:T,:)';
+Z = [ones(1,T-p); Ylags]; % Z(t) = [1 y(t) ... y(t-p+1)] (Ref.2 p.70)
 
 % -----------------------------(3) FGLS Estimation -----------------------------------
 
@@ -54,7 +54,7 @@ end
 % First stage estimate using LS
 AA = (Y*Z')/(Z*Z');
 U = Y-AA*Z;
-SIGMA = U*U'/(t-K*p-1);
+SIGMA = U*U'/(T-K*p-1);
 
 % Second stage estimate the GLS
 gamma = inv(R'*kron(Z*Z',inv(SIGMA))*R) * R' * (kron(Z,inv(SIGMA))) * vec(Y);
@@ -66,5 +66,17 @@ tmpA = reshape(alpha,K,(K*p + 1));
 mu = [tmpA(1:K,1); zeros(K,1)];
 A = tmpA(:,2:(K*p) + 1);
 A = [A(1:K,:);eye(K*(p-1)) zeros(K*(p-1),K)]; % companion matrix (Ref.2 p.15)
+
+% -----------------------------(5) Test coeffs ---------------------------------------
+
+dof = T - K*(p-1);
+vectmpA = vec(tmpA);
+tvals = vectmpA./sqrt(diag(kron(inv(Z*Z'),SIGMA)));
+pvals = zeros(size(tvals,1),1);
+for i = 1:size(tvals,1)
+    pvals(i,:) = 2*(1-tcdf(abs(tvals(i)),dof));
+end 
+tvals = round( reshape(tvals,size(tmpA,1),size(tmpA,2)),3);
+pvals = round( reshape(pvals,size(tmpA,1),size(tmpA,2)),3);
 
 end

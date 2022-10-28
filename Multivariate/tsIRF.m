@@ -1,4 +1,4 @@
-function [PHI,IRFout,D] = tsIRF2(A,SIGMA,p,h,method,xParams)
+function [P,PHI,IRFOrth,IRFGen,D] = tsIRF(A,SIGMA,p,h,method,xParams)
 % ------------------------------------------------------------------------------------
 % Function to estimate MA(oo) coefficient matrices and h-step Inpulse Response Functions
 % ------------------------------------------------------------------------------------
@@ -10,8 +10,10 @@ function [PHI,IRFout,D] = tsIRF2(A,SIGMA,p,h,method,xParams)
 %        xParams.M (only for VARX specification): number of unmodelled variables
 %        xParams.B (only for VARX specification): exogenous variables coefficient matrix ((Kp + Ms) x M)
 % ------------------------------------------------------------------------------------
-% OUTPUT: PHI: MA weight matrices (K x K x h)
-%         IRFout: Inpulse Response (K x K x h)
+% OUTPUT: P: lower-triangular Choleski matrix (K x K)
+%         PHI: MA weight matrices (K x K x h)
+%         IRFOrth: Orthogonalized Inpulse Response (K x K x h)
+%         IRFGen: Generalized Inpulse Response (K x K x h)
 %         D: Dynamic multiplier
 % ------------------------------------------------------------------------------------
 % Refrences:
@@ -42,14 +44,13 @@ arguments
 end
 
 % ------------------------------(2) set env ------------------------------------------
-s = xParams.s;
-M = xParams.M;
-B = xParams.B;
+
 K = size(SIGMA,1);
-J = [eye(K) zeros(K, (K*p) + (M*s) - K)]; % (Ref.1 p.26, Ref.2 p.403)
+J = [eye(K) zeros(K, (K*p) + (xParams.M*xParams.s) - K)]; % (Ref.1 p.26, Ref.2 p.403)
 PHI = zeros([K K h+1]);
 e = eye(K); % selection vector
-IRFout = zeros(K,K,h);
+IRFOrth = zeros(K,K,h);
+IRFGen = zeros(K,K,h);
 
 % ------------------------------(3) MA representation of VAR(p) ----------------------
 
@@ -61,25 +62,27 @@ end
 
 % ------------------------------(4) Dynamic multipliers --------------------------------
 
-if isempty(B)
-    D = 0;
-else
-    D(:,:,1) = J * (A^0) * B; % (Ref.2 p.407)
+if ~isempty(xParams.B)
+D(:,:,1) = J * (A^0) * xParams.B; % (Ref.2 p.407)
     for i = 1:h-1
-        D(:,:,i+1) = J * (A^i) * B;
+        D(:,:,i+1) = J * (A^i) * xParams.B;
     end
+else
+    D = 0;
 end
 
 % ------------------------------(5) Inpulse Responses --------------------------------
 
 for hh = 1:h
     for ii = 1:K
-        if strcmp(method,'IRFOrth')
-            % IRF Orthogonalized (Ref.4 p.586)
-            IRFout(:,ii,hh) = (( PHI(:,:,hh) * P) * e(:,ii)); 
+        if method == 'IRFOrth'
+        % IRF Orthogonalized (Ref.5 p.586)
+        IRFOrth(:,ii,hh) = (( PHI(:,:,hh) * P) * e(:,ii)); 
+        elseif method == 'IRFGen'
+        % IRF Generalized (Ref.5 p.589)
+        IRFGen(:,ii,hh) = ( (PHI(:,:,hh) * SIGMA) * e(:,ii) / sqrt( SIGMA(ii,ii) ) ); 
         else
-            % IRF Generalized (Ref.4 p.589)
-            IRFout(:,ii,hh) = ( (PHI(:,:,hh) * SIGMA) * e(:,ii) / sqrt( SIGMA(ii,ii) ) ); 
+            error('Hiba')
         end
     end
 end

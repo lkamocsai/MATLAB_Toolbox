@@ -1,4 +1,4 @@
-﻿function [Wval,Fval,Wpval,Fpval,H] = tsGrangerCasuality(y,p,testParams,alpha,xParams)
+function [Wval,Fval,Wpval,Fpval,H] = tsGrangerCasuality(y,p,testParams,alpha,xParams)
 % ------------------------------------------------------------------------------------
 % Wald and F-test for Granger-Causality
 % ------------------------------------------------------------------------------------
@@ -6,8 +6,8 @@
 %        p: number of lags of y
 %        testParam: vector of parameters positions which wanted to be tested
 %        alpha: sig level (default level: 0.05)
-%        xParams.x (use only for VARX specification): unmodelled (exogenous) variables 
-%        xParams.s (use only for VARX specification): number of lags of x
+%        xParams.x (only for VARX specification): unmodelled (exogenous) variables 
+%        xParams.s (only for VARX specification): number of lags of x
 % ------------------------------------------------------------------------------------
 % OUTPUT: WVal: result of the Wald test
 %         FVal: result of the F-test

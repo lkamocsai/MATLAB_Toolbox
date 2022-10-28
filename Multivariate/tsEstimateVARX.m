@@ -1,4 +1,4 @@
-﻿function [mu,A,B,SIGMA,U,Z] = tsEstimateVARX(y,x,p,s,paramRestr)
+function [mu,A,B,SIGMA,U,Z,tvals,pvals] = tsEstimateVARX(y,x,p,s,paramRestr)
 % ------------------------------------------------------------------------------------
 % Function to estimate VARX(p,s) model using Feasible Generalized Least Square
 % ------------------------------------------------------------------------------------
@@ -24,7 +24,7 @@
 % Copyright: Laszlo Kamocsai
 % https://github.com/lkamocsai
 % lkamocsai@student.elte.hu
-% Version: 1.0    Date: 11/10/2022
+% Version: 1.1    Date: 29/10/2022
 %
 % ------------------------------------------------------------------------------------
 %
@@ -34,25 +34,31 @@ arguments
     y {mustBeNonempty,mustBeNumeric}
     x {mustBeNonempty,mustBeNumeric}
     p {mustBeNonempty,mustBeNonzero,mustBeNumeric}
-    s {mustBeNonempty,mustBeNonzero,mustBeNumeric,mustBeLessThanOrEqual(s,p) }
+    s {mustBeNonempty,mustBeNumeric,mustBeLessThanOrEqual(s,p) }
     paramRestr {mustBeNumeric} = []
 end
 
-% Get dimensions
-[t,K] = size(y);
+% get dimensions
+[T,K] = size(y);
 [~,M] = size(x);
 
 % -----------------------------(2) Prepare dataset for estimation --------------------
 
 tmpYlags = tsMultMlag(y,p); % Y(t) = [y(t) ... y(t-p+1)]
-Y = y(p + 1:t,:)'; % set start
-Ylags = tmpYlags(p + 1:t,:)';
+Y = y(p + 1:T,:)'; % set start
+Ylags = tmpYlags(p + 1:T,:)';
 
+% Check if lagged exogenous variable considered or not
+if s ~= 0
 tmpXlags = tsMultMlag(x,s);
-X = x(p + 1:t,:)';
-Xlags = tmpXlags(p + 1:t,:)';
+X = x(p + 1:T,:)';
+Xlags = tmpXlags(p + 1:T,:)';
+else 
+    X = x(p + 1:T,:)';
+    Xlags = [];
+end
 
-Z = [ones(1,t-p); Ylags; Xlags; X]; % Z(t) = [1 y(t) ... y(t-p+1)] (Ref.2 p.70)
+Z = [ones(1,T-p); Ylags; Xlags; X]; % Z(t) = [1 y(t) ... y(t-p+1)] (Ref.2 p.70)
 
 % -----------------------------(3) FGLS Estimation -----------------------------------
 
@@ -65,7 +71,7 @@ end
 % First stage estimate using LS
 AA = (Y*Z')/(Z*Z');
 U = Y-AA*Z;
-SIGMA = U*U'/(t-K*p-1);
+SIGMA = U*U'/(T-K*p-1);
 
 % Second stage estimate the GLS
 gamma = inv(R'*kron(Z*Z',inv(SIGMA))*R) * R' *(kron(Z,inv(SIGMA))) * vec(Y);
@@ -79,5 +85,17 @@ B0 = tmpA(:,end-M+1:end);
 tmpAbig = [tmpA(:,2:K*p + M*s + 1); eye(K*(p-1)) zeros(K*(p-1),K)  zeros(K*(p-1),M*s)];
 A = [tmpAbig; [zeros(M*s,K*p) [zeros(M,M*s); eye(M*(s-1)) zeros(M*(s-1),M)] ] ]; % companion matrix (Ref.2 p.403)
 B = [B0 ; zeros(K*(p-1),M); eye(M*s,M)];
+
+% -----------------------------(5) Test coeffs ---------------------------------------
+
+dof = T - K*(p-1) - M*(s-1);
+vectmpA = vec(tmpA);
+tvals = vectmpA./sqrt(diag(kron(inv(Z*Z'),SIGMA)));
+pvals = zeros(size(tvals,1),1);
+for i = 1:size(tvals,1)
+    pvals(i,:) = 2*(1-tcdf(abs(tvals(i)),dof));
+end 
+tvals = round( reshape(tvals,size(tmpA,1),size(tmpA,2)),3);
+pvals = round( reshape(pvals,size(tmpA,1),size(tmpA,2)),3);
 
 end
