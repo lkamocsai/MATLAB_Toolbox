@@ -1,9 +1,8 @@
-function LL = tsLLFunctionGARCH(yt,e2,theta,type)
+function LL = tsLLFunctionGARCH(yt,theta,type)
 % ------------------------------------------------------------------------------------
-% Log-likelihood function to estimate GARCH(1,1), GJR-GARCH models
+% Log-likelihood function to estimate GARCH(1,1) or GJR-GARCH(1,1) models
 % ------------------------------------------------------------------------------------
 % INPUT: yt: return series (T x 1)
-%        e2: epsilon(t)^2 (T x 1)
 %        theta: model parameters
 %        type: GARCH model type (default: GARCH(1,1))
 % ------------------------------------------------------------------------------------
@@ -18,7 +17,7 @@ function LL = tsLLFunctionGARCH(yt,e2,theta,type)
 % Copyright: Laszlo Kamocsai
 % https://github.com/lkamocsai
 % lkamocsai@student.elte.hu
-% Version: 1.0    Date: 11/10/2022
+% Version: 1.1    Date: 30/10/2022
 %
 %-------------------------------------------------------------------------------------
 %
@@ -26,7 +25,6 @@ function LL = tsLLFunctionGARCH(yt,e2,theta,type)
 
 arguments
     yt {mustBeNumeric}
-    e2 {mustBeNumeric}
     theta {mustBeNumeric}
     type char {mustBeMember(type,{'GARCH','GJR'})} = 'GARCH'
 end
@@ -37,21 +35,52 @@ end
 [T,~] = size(yt);
 theta = abs(theta);
 
-% Init sigma(t)^2, and set the first value
+% Init sig(t)^2, e(t)^2 and leverage vectors
 sig2 = zeros(T,1);
-sig2(1) = var(yt); 
+e2 = zeros(T,1);
+lv2 = zeros(T,1);
 
 %----------------------------------(2) calculate LL function -------------------------
 
 if strcmp(type,'GARCH')
+    % Stationary condition check
+    gamma = 1 - sum(theta(3:end)); 
+    if gamma < 0 
+        LL = intmax ; 
+        return ; 
+    end
+    % Set first value of sig(t)^2 and e(t)^2
+    sig2(1,:) = theta(2)/gamma; 
+    e2(1,:) = (yt(1,:) - theta(1))^2;
+    % Start recursive iterate
     for t = 2:T
-        sig2(t,:) = [ones(1,1) e2(t-1) sig2(t-1)]*theta';
+        sig2(t,:) = [ones(1,1) e2(t-1,:) sig2(t-1,:)]*abs(theta(2:end)');
+        e2(t,:) = (yt(t,:) - theta(1))^2;
+        if sig2(t,:) < 0 
+            LL = intmax ; 
+            return ; 
+        end
     end
 elseif strcmp(type,'GJR')
-    % Get the levarage term
-    lv2 = e2.*(yt < 0);
+    % Stationary condition check
+    gamma = 1 - (sum(theta(3:end-1)) + theta(end)*0.5); 
+    if gamma < 0 
+        LL = intmax ; 
+        return ; 
+    end
+    % Set first value of sig(t)^2, e(t)^2, and the leverage term
+    sig2(1,:) = theta(2)/gamma;
+    e2(1,:) = (yt(1,:) - theta(1))^2;
+    lv2(1,:) = e2(1,:).*((yt(1,:) - theta(1)) < 0);
+    % Start recursive iterate
     for t = 2:T
-        sig2(t,:) = [ones(1,1) e2(t-1) sig2(t-1) lv2(t-1)]*theta';
+        sig2(t,:) = [ones(1,1) e2(t-1,:) sig2(t-1,:) lv2(t-1,:)]*abs(theta(2:end)');
+        e2(t,:) = (yt(t,:) - theta(1))^2;
+        lv2(t,:) = e2(t,:).*( (yt(t,:) - theta(1)) < 0);
+        if sig2(t,:) < 0 
+            LL = intmax ; 
+            return ; 
+        end
     end
 else
     error('Wrong model type');

@@ -1,6 +1,6 @@
 function [theta,SE,tstat,sig2] = tsMLEstimateGARCH(yt,init,type)
 % ------------------------------------------------------------------------------------
-% Estimate GARCH(1,1) and GJR-GARCH(1,1,1) models
+% Estimate GARCH(1,1) or GJR-GARCH(1,1) models
 % ------------------------------------------------------------------------------------
 % INPUT: yt: return series (T x 1)
 %        init: initial conditions
@@ -20,7 +20,7 @@ function [theta,SE,tstat,sig2] = tsMLEstimateGARCH(yt,init,type)
 % Copyright: Laszlo Kamocsai
 % https://github.com/lkamocsai
 % lkamocsai@student.elte.hu
-% Version: 1.0    Date: 11/10/2022
+% Version: 1.1    Date: 30/10/2022
 %
 %-------------------------------------------------------------------------------------
 %
@@ -33,46 +33,51 @@ arguments
 end
 
 %----------------------------------(2) set env ---------------------------------------
+% Calculate log-returns
+yt = price2ret(yt, Method="continuous");
 
 % Get length of the series
 [T,~] = size(yt);
-
-% epsilon(t)
-yt = bsxfun(@minus,yt,mean(yt)); % demean return series
-
-% epsilon(t)^2
-e2 = yt.^2;
 
 %----------------------------------(3) estimate model --------------------------------
 
 % Estimate model parameters
 ops = optimset('LargeScale','off','Display','off');
-[theta,~,~,~,~,Hessian] = fminunc(@(theta) tsLLFunctionGARCH(yt,e2,theta,type), init, ops);
+[theta,~,~,~,~,Hessian] = fminunc(@(theta) tsLLFunctionGARCH(yt,theta,type), init, ops);
 
-% Calculate standard errors
+% Calculate standard errors using the Hessian
 invHess = inv(Hessian);
-SE = sqrt(diag(invHess)*1/(T));
+SE = sqrt(abs(diag(invHess))*(1/T));
 
-% Calculate t-statistics
+% Calculate coefficients t-statistics
 for i = 1:size(theta,2)
     tstat(i) = theta(i)/SE(i);
 end
 
 %----------------------------------(4) fit model -------------------------------------
 
-% Init sigma(t)^2, and set the first value
+% Init sig(t)^2, and set the first value
 sig2 = zeros(T,1);
-sig2(1) = var(yt);
+e2 = zeros(T,1);
+lv2 = zeros(T,1);
 
-if strcmp(type,'GARCH')
+if strcmp(type,'GARCH') 
+    gamma = 1 - sum(theta(3:end)); 
+    sig2(1,:) = theta(2)/gamma; 
+    e2(1,:) = (yt(1,:) - theta(1))^2;
     for t = 2:T
-        sig2(t,:) = [ones(1,1) e2(t-1) sig2(t-1)]*theta'; 
+        sig2(t,:) = [ones(1,1) e2(t-1,:) sig2(t-1,:)]*abs(theta(2:end)'); 
+        e2(t,:) = (yt(t,:) - theta(1))^2;
     end
 elseif strcmp(type,'GJR')
-    % Get the levarage term
-    lv2 = e2.*(yt < 0); 
+    gamma = 1 - (sum(theta(3:end-1)) + theta(end)*0.5); 
+    sig2(1,:) = theta(2)/gamma;
+    e2(1,:) = (yt(1,:) - theta(1))^2;
+    lv2(1,:) = e2(1,:).*((yt(1,:) - theta(1)) < 0);
     for t = 2:T
-        sig2(t,:) = [ones(1,1) e2(t-1) sig2(t-1) lv2(t-1)]*theta'; 
+        sig2(t,:) = [ones(1,1) e2(t-1,:) sig2(t-1,:) lv2(t-1,:)]*abs(theta(2:end)');
+        e2(t,:) = (yt(t,:) - theta(1))^2;
+        lv2(t,:) = e2(t,:).*( (yt(t,:) - theta(1)) < 0);
     end
 else
     error('Wrong model type');
