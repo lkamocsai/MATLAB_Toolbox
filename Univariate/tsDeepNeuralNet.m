@@ -11,9 +11,9 @@ function [Output,MSE,W,b] = tsDeepNeuralNet (X,t,alpha,hiddenConfig,activation,n
 %        normalize: select yes if the data not normalized (default: y)
 % ------------------------------------------------------------------------------------
 % OUTPUT: Output: predicted values
-%	      MSE: mean square error
-%	      W: weight matrix
-%	      b: bias
+%	  MSE: mean square error
+%	  W: weight matrix
+%	  b: bias
 % ------------------------------------------------------------------------------------
 % Refrences:
 % 1. M.T.Hagan, H.B.Demuth, M.H.Beale, O. De Jesús: Neural Network Design (2nd Edition) 
