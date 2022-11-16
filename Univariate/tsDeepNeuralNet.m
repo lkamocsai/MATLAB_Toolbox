@@ -1,6 +1,6 @@
 function [Output,MSE,W,b] = tsDeepNeuralNet (X,t,alpha,hiddenConfig,activation,normalize)
 % ------------------------------------------------------------------------------------
-% 
+% Deep Neural Network
 % ------------------------------------------------------------------------------------
 % INPUT: X: predictor variables
 %        t: target variable
