@@ -13,6 +13,9 @@ function [mu,A,B,SIGMA,U,Z,tvals,pvals] = tsEstimateVARX(y,x,p,s,paramRestr)
 %         B: unmodelled variables coefficient matrix (Kp + Ms) x M
 %         SIGMA: Covariance matrix (K x K)
 %         U: residuals (K x T)
+%         Z: independent variables matrix
+%         tvals: t-test results
+%         pvals: p-vals of t-tests
 % ------------------------------------------------------------------------------------
 % Refrences:
 % 1. L.Kilian and H.Lütkepohl - Structural Vector Autoregressive Analysis (Oxford, 2017)
