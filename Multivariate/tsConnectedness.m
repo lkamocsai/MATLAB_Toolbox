@@ -14,6 +14,13 @@ function tblConnactedness = tsConnectedness(FEVDGen)
 % 5. H.M.Pesaran - Time Series and Panel Data Econometrics (Oxford, 2015)
 % ------------------------------------------------------------------------------------
 %
+% Copyright: Laszlo Kamocsai
+% https://github.com/lkamocsai
+% lkamocsai@student.elte.hu
+% Version: 1.0    Date: 30/10/2022
+%
+%-------------------------------------------------------------------------------------
+%
 %----------------------------------(1) check inputs ----------------------------------
 
 arguments
